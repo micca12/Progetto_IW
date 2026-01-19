@@ -1,0 +1,138 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model ambienti {
+  id                          Int                           @id @default(autoincrement())
+  nome                        String                        @unique @db.VarChar(50)
+  prodotti_ambienti_materiali prodotti_ambienti_materiali[]
+}
+
+model colori {
+  id          Int      @id @default(autoincrement())
+  prodotto_id Int
+  nome        String   @db.VarChar(100)
+  codice_hex  String   @db.Char(7)
+  prodotti    prodotti @relation(fields: [prodotto_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  prezzi      prezzi[]
+}
+
+model dimensioni {
+  id     Int      @id @default(autoincrement())
+  litri  Decimal  @unique @db.Decimal(3, 1)
+  prezzi prezzi[]
+}
+
+model marche {
+  id                 Int        @id @default(autoincrement())
+  nome               String     @unique @db.VarChar(100)
+  logo_url           String?    @db.VarChar(255)
+  email              String?    @unique @db.VarChar(255)
+  password_hash      String?    @db.VarChar(255)
+  partita_iva        String?    @db.VarChar(20)
+  telefono           String?    @db.VarChar(20)
+  sito_web           String?    @db.VarChar(255)
+  attivo             Boolean?   @default(false)
+  eliminato          Boolean?   @default(false)
+  data_registrazione DateTime?  @default(now()) @db.Timestamp(6)
+  ultimo_accesso     DateTime?  @db.Timestamp(6)
+  prodotti           prodotti[]
+  utenti             utenti[]
+
+  @@index([attivo], map: "idx_marche_attivo")
+  @@index([email], map: "idx_marche_email")
+}
+
+model materiali {
+  id                          Int                           @id @default(autoincrement())
+  nome                        String                        @unique @db.VarChar(100)
+  prodotti_ambienti_materiali prodotti_ambienti_materiali[]
+}
+
+model preferiti {
+  id            Int       @id @default(autoincrement())
+  utente_id     Int
+  prodotto_id   Int
+  data_aggiunta DateTime? @default(now()) @db.Timestamp(6)
+  prodotti      prodotti  @relation(fields: [prodotto_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  utenti        utenti    @relation(fields: [utente_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([utente_id, prodotto_id], map: "preferiti_utente_id_prodotto_id_idx")
+}
+
+model prezzi {
+  id            Int        @id @default(autoincrement())
+  colore_id     Int
+  dimensione_id Int
+  prezzo        Decimal    @db.Decimal(8, 2)
+  colori        colori     @relation(fields: [colore_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  dimensioni    dimensioni @relation(fields: [dimensione_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([colore_id, dimensione_id], map: "prezzi_colore_id_dimensione_id_idx")
+}
+
+model prodotti {
+  id                          Int                           @id @default(autoincrement())
+  marca_id                    Int
+  nome                        String                        @db.VarChar(200)
+  descrizione                 String?
+  certificazioni              String?                       @db.VarChar(255)
+  resistenza                  String?                       @db.VarChar(255)
+  base                        String?                       @db.VarChar(50)
+  numero_mani                 Int?
+  temperatura_applicazione    String?                       @db.VarChar(100)
+  copertura_per_litro         Decimal?                      @db.Decimal(5, 2)
+  scheda_tecnica_url          String?                       @db.VarChar(255)
+  approvato                   Boolean?                      @default(false)
+  eliminazione_richiesta      Boolean?                      @default(false)
+  eliminato                   Boolean?                      @default(false)
+  data_creazione              DateTime?                     @default(now()) @db.Timestamp(6)
+  data_modifica               DateTime?                     @db.Timestamp(6)
+  colori                      colori[]
+  preferiti                   preferiti[]
+  marche                      marche                        @relation(fields: [marca_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  prodotti_ambienti_materiali prodotti_ambienti_materiali[]
+
+  @@index([approvato], map: "idx_prodotti_approvato")
+  @@index([eliminazione_richiesta], map: "idx_prodotti_eliminazione")
+  @@index([eliminato], map: "idx_prodotti_eliminato")
+}
+
+model prodotti_ambienti_materiali {
+  id           Int       @id @default(autoincrement())
+  prodotto_id  Int
+  ambiente_id  Int
+  materiale_id Int
+  ambienti     ambienti  @relation(fields: [ambiente_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  materiali    materiali @relation(fields: [materiale_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  prodotti     prodotti  @relation(fields: [prodotto_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([prodotto_id, ambiente_id, materiale_id], map: "prodotti_ambienti_materiali_prodotto_id_ambiente_id_materia_idx")
+}
+
+model ruoli {
+  id     Int      @id @default(autoincrement())
+  nome   String   @unique @db.VarChar(50)
+  utenti utenti[]
+}
+
+model utenti {
+  id                 Int         @id @default(autoincrement())
+  ruolo_id           Int         @default(2)
+  email              String      @unique @db.VarChar(255)
+  password_hash      String      @db.VarChar(255)
+  nome               String      @db.VarChar(100)
+  cognome            String      @db.VarChar(100)
+  attivo             Boolean?    @default(true)
+  data_registrazione DateTime?   @default(now()) @db.Timestamp(6)
+  ultimo_accesso     DateTime?   @db.Timestamp(6)
+  marca_id           Int?
+  preferiti          preferiti[]
+  marche             marche?     @relation(fields: [marca_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  ruoli              ruoli       @relation(fields: [ruolo_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
